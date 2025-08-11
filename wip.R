@@ -54,7 +54,6 @@ gc_calc <- function(p1, p2) {
   GCDist <- distGeo(p1, p2) / 1e3
   GCPath <- gcIntermediate(p1, p2, n = round(25 * log(GCDist, 10)), addStartEnd = TRUE, breakAtDateLine = TRUE) # Geht die Linie über Datumsgrenze, dann erzeugt 'breakAtDateLine' eine Liste mit zwei Matrizen
   if(class(GCPath)[1] == "list") GCPath <- rbind(GCPath[[1]], NA, GCPath[[2]])
-  gcPath <- rbind(GCPath, NA) # Immer noch eine NA anhängen. Verhindert beim Plotten mehrer Pfade Sprunglinien
   colnames(GCPath) <- c("Long", "Lat")
   return(tibble(Bearing, GCDist, GCPath = list(GCPath)))
 }
@@ -73,6 +72,7 @@ flightdata |> filter(str_detect(Trip, "T")) |> pluck("GCPath") |> (\(x)do.call(r
 files <- dir(recursive = TRUE) |> 
   str_subset(".*\\.csv")
 flightdata <- mutate(flightdata, FlightPath = )
+
 
 
 
