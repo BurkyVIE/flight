@@ -156,7 +156,7 @@ mytrips <- myflights |>
   group_by(Trip) |>
   summarise(Route = paste0(Route, collapse = ", "),
             GCDist = sum(GCDist),
-            Path = reduce(GCPath, bind_rows) |> add_row(Long = NA, Lat = NA) |> list()) |> # Beim Zusammenlegen der Pfade werden NAs eingefügt um Verbindungen dort zu vermeiden wo keine sind
+            GCPath = reduce(GCPath, bind_rows) |> add_row(Long = NA, Lat = NA) |> list()) |> # Beim Zusammenlegen der Pfade werden NAs eingefügt um Verbindungen dort zu vermeiden wo keine sind
   mutate(Airports = strsplit(Route, "[^A-Z]{1,2}") |> lapply(unique)) |>
   arrange(desc(GCDist))
 comment(mytrips) <- person
@@ -174,6 +174,7 @@ comment(mytrips) <- person
 # files <- dir(recursive = TRUE) |> 
 #   str_subset(".*\\.csv")
 # flightdata <- mutate(flightdata, FlightPath = )
+
 
 
 
