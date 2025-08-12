@@ -134,7 +134,7 @@ myroutes <- myflights |>
             ADet = case_when(Dep < Arr ~ DepDet, TRUE ~ ArrDet),
             Z = case_when(Dep > Arr ~ Dep, TRUE ~ Arr),
             ZDet = case_when(Dep > Arr ~ ArrDet, TRUE ~ DepDet),
-            GCPath = case_when(Dep < Arr ~ GCPath, TRUE ~ rev(GCPath)),
+            GCPath = case_when(Dep < Arr ~ GCPath, TRUE ~ map(GCPath, ~tibble(arrange(., desc(row_number()))))),
             Route = paste(A, Z, sep ="-"),
             A2Z = A == Dep,
             GCDist) |>
@@ -174,6 +174,7 @@ comment(mytrips) <- person
 # files <- dir(recursive = TRUE) |> 
 #   str_subset(".*\\.csv")
 # flightdata <- mutate(flightdata, FlightPath = )
+
 
 
 
