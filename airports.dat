@@ -23,8 +23,8 @@ BRU EBBR "Brussels Apt" EU BE 50.90140152 4.48443985 184
 MXP LIMC "Malpensa Int'l Apt" EU IT 45.6306 8.72811 768
 SSH HESH "Sharm El Sheikh Int'l Apt" AS EG 27.977301 34.395 143
 HAJ EDDV "Hannover Apt" EU DE 52.46110153 9.685079575 183
-MLA LMML "Malta Int'l Apt" EU MT 35.857498 14.4775 300
 DUS EDDL "Düsseldorf Apt" EU DE 51.289501 6.76678 147
+MLA LMML "Malta Int'l Apt" EU MT 35.857498 14.4775 300
 CDG LFPG "Charles de Gaulle Int'l Apt" EU FR 49.012798 2.55 392
 DXB OMDB "Dubai Int'l Apt" AS AE 25.25279999 55.36439896 62
 SYD YSSY "Sydney Kingsford Smith Int'l Apt" OC AU -33.9460983 151.177002 21
@@ -50,3 +50,54 @@ FUE GCFV "Fuerteventura Apt" EU ES 28.4527 -13.8638 85
 FLR LIRQ "Peretola Apt" EU IT 43.810001 11.2051 142
 HER LGIR "Heraklion Int'l Nikos Kazantzakis Apt" EU GR 35.33969879 25.18029976 115
 DUB EIDW "Dublin Apt" EU IE 53.421299 -6.27007 242
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
