@@ -7,28 +7,42 @@ library(geosphere)
 spot <- "VIE"
 person <- "Thomas"
 
+spec <- "\033[0;94m- ✈ \033[0m"
+it <- "\033[3m"
+hl <- "\033[0;93m"
+fe <- "\033[0m"
+# https://gist.github.com/JBlond/2fea43a3049b38287e5e9cefc87b2124
+
+cat("\n\n")
+cat(paste0(spec, "my", it, "stuff", fe, " will be evaluated for ", hl, toupper(person), fe, "\n"))
+
+## function to clean flightnumbers
+clean_flight <- function(txt)
+  if(is.na(txt)) return(NA) else
+    str_match(txt, "(..)(.*)") |> (\(x)paste0(x[,2], str_pad(x[,3], 4)))()
+
 # AIRPORTS DATA ----
 ## import data ----
 airportdata <- read_delim("airports.dat", delim = " ", quote = '"', lazy = FALSE,
                           col_types = "cccccddi") |> 
   mutate(Elevation_m = Elevation_ft * .3048, .keep = "unused")
 
+cat(paste0(spec, "Airport Data imported\n"))
+
 # TRUE PATH DATA ----
 ## find and import data ----
 truepathdata <- dir("Detaildaten/", recursive = TRUE, pattern = "\\.csv", full.names = TRUE) |>
   enframe(value = "File", name = NULL) |>
-  mutate(Extr = str_replace(File, "Detaildaten\\/trip_((?:[HT0-9]{4})+)\\/.*?([0-9A-Z]{3,6}).*\\.csv", "\\1 \\2")) |>
+  mutate(Extr = str_replace(File, "Detaildaten\\/trip((?:[HT0-9]{4})+)\\/.*?([0-9A-Z]{3,6}).*\\.csv", "\\1 \\2")) |>
   separate(Extr, into = c("Trip", "Flight")) |> 
-  mutate(TruePath = map(File, ~tibble(read_csv(., show_col_types = FALSE, lazy = FALSE)) |>
-                          separate(Position, into = c("Lat", "Long"), sep = ",") |>
+  mutate(Flight = map_chr(Flight, ~clean_flight(.)),
+         TruePath = map(File, ~tibble(read_csv(., show_col_types = FALSE, lazy = FALSE)) |>
+                          separate(Position, into = c("Lat", "Long"), sep = ",", convert = TRUE) |>
                           filter(Speed >= 30)))
 
-# FLIGHTS DATA ----
-## function to clean flightnumbers
-clean_flight <- function(txt)
-  if(is.na(txt)) return(NA) else
-    str_match(txt, "(..)(.*)") |> (\(x)paste0(x[,2], str_pad(x[,3], 4)))()
+cat(paste0(spec, "True Path Data imported\n"))
 
+# FLIGHTS DATA ----
 ## function to read and modify files ----
 read_myflights <- function(file){
   pers <- str_split_1(file, "_")[2] |> str_to_title()
@@ -36,7 +50,7 @@ read_myflights <- function(file){
              col_types = "icDcccciicc") |> 
     add_column(Pers = pers, .before = 1) |>
     mutate(.keep = "unused",
-           # Flight = map_chr(Flight, ~clean_flight(.)),
+           Flight = map_chr(Flight, ~clean_flight(.)),
            SDur = hours(Dur.h) + minutes(Dur.min))
 }
 
@@ -47,7 +61,7 @@ files <- dir() |>
 ## import data ----
 flightdata <- map_df(files, ~read_myflights(.))
 ### clean up ----
-rm(clean_flight, read_myflights, files)
+rm(read_myflights, files)
 
 ## summarise for joint flights ----
 flightdata <- nest(flightdata, Ident = Pers:Trip) |>
@@ -69,18 +83,19 @@ flightdata <- left_join(flightdata, airportdata, by = c("Arr" = "IATA")) |>
 rm(airportdata)
 
 ## function to calculate gc matters ----
-gc_calc <- function(p1, p2) {
+gc_calc <- function(p1, p2, rt) {
   GCDist <- distGeo(p1, p2) / 1e3
   Bearing <- bearing(p1, p2)
   GCPath <- gcIntermediate(p1, p2, n = round(25 * log(GCDist, 10)), addStartEnd = TRUE, breakAtDateLine = TRUE) # Geht die Linie über Datumsgrenze, dann erzeugt 'breakAtDateLine' eine Liste mit zwei Matrizen
   if(class(GCPath)[1] == "list") GCPath <- rbind(GCPath[[1]], NA, GCPath[[2]])
-  return(tibble(GCDist, Bearing, GCPath = list(tibble(Long = GCPath[,1], Lat = GCPath[,2]))))
+  return(tibble(GCDist, Bearing, GCPath = list(tibble(Rel = rt, Long = GCPath[,1], Lat = GCPath[,2]))))
 }
 
 ## add relation and great circle calculations ----
 flightdata <- mutate(Relation = case_when(map2_lgl(DepDet, ArrDet, ~.x$Country == .y$Country) ~ "Domestic",
                                           TRUE ~ "International"),
-                     flightdata, Res = map2(DepDet, ArrDet, ~gc_calc(p1 = c(.x$Long, .x$Lat), p2 = c(.y$Long, .y$Lat)))) |>
+                     flightdata, Res = pmap(list(DepDet, ArrDet, paste(Dep, Arr, sep = "-")), ~gc_calc(p1 = c(..1$Long, ..1$Lat), p2 = c(..2$Long, ..2$Lat), rt = ..3))) |>
+                     # flightdata, Res = map2(DepDet, ArrDet, ~gc_calc(p1 = c(.x$Long, .x$Lat), p2 = c(.y$Long, .y$Lat)))) |>
   unnest(Res)
 ### clean up ----
 rm(gc_calc)
@@ -90,8 +105,7 @@ flightdata <- left_join(flightdata, select(truepathdata, Trip, Flight, TruePath)
 ### clean up ----
 rm(truepathdata)
 
-# find 'myflights' with 'truePath' data
-# filter(myflights, !(myflights |> pull(TruePath) |> lapply(is.null) |> unlist()))
+cat(paste0(spec, "Flight Data imported\n"))
 
 # MYFLIGHTS ----
 myflights <- flightdata |> 
@@ -100,6 +114,8 @@ myflights <- flightdata |>
   select(-c(Trip, Ident.Pers)) |>
   relocate(Trip = Ident.Trip, .before = 1)
 comment(myflights) <- person
+
+cat(paste0(spec, "'myflights' (", person, ") done\n"))
 
 # MYAIRPORTS ----
 myairports <- select(myflights, IATA = Dep, DepDet) |> unnest(cols = DepDet) |>
@@ -148,6 +164,8 @@ myairports <- myairports |>
   rowid_to_column(var = "Rank")
 comment(myairports) <- person
 
+cat(paste0(spec, "'myairports' (", person, ") done\n"))
+
 # MYROUTES ----
 myroutes <- myflights |>
   transmute(A = case_when(Dep < Arr ~ Dep, TRUE ~ Arr),
@@ -166,24 +184,42 @@ myroutes <- myflights |>
             GCPath = list(first(GCPath)))
 comment(myroutes) <- person
 
+cat(paste0(spec, "'myroutes' (", person, ") done\n"))
+
 # MYTRIPS ----
 mytrips <- myflights |> 
   group_by(TL = paste0(Trip, Leg)) |> 
   summarise(Trip = first(Trip),
             Route = paste0(c(Dep |> head(1), Arr), collapse = "-"),
             GCDist = sum(GCDist),
-            GCPath = reduce(GCPath, bind_rows) |> add_row(Long = NA, Lat = NA) |> list(), # Beim Zusammenlegen der Pfade werden NAs eingefügt um Verbindungen dort zu vermeiden wo keine sind
-            TruePath = reduce(TruePath, bind_rows, .init = tibble(Timestamp = NA, UTC = NA, Callsign = NA, Lat = NA, Long = NA, Altitude = NA, Speed = NA, Direction = NA)) |> add_row(Long = NA, Lat = NA) |> list()
-            ) |> 
+            GCPath = list(GCPath), # list depth = 2
+            TruePath = list(TruePath)) |> 
   group_by(Trip) |>
   summarise(Route = paste0(Route, collapse = ", "),
             GCDist = sum(GCDist),
-            GCPath = reduce(GCPath, bind_rows) |> add_row(Long = NA, Lat = NA) |> list(), # Beim Zusammenlegen der Pfade werden NAs eingefügt um Verbindungen dort zu vermeiden wo keine sind
-            TruePath = reduce(TruePath, bind_rows, .init = tibble(Timestamp = NA, UTC = NA, Callsign = NA, Lat = NA, Long = NA, Altitude = NA, Speed = NA, Direction = NA)) |> add_row(Long = NA, Lat = NA) |> list()
-            ) |>
-  mutate(Airports = strsplit(Route, "[^A-Z]{1,2}") |> lapply(unique)) |>
+            GCPath = list(GCPath), # list depth = 3
+            TruePath = list(TruePath)) |>
+  mutate(GCPath = map(GCPath, ~reduce(unlist(., recursive = FALSE), bind_rows)), # combine list elements into one tibble
+         TruePath = map(TruePath, ~reduce(unlist(., recursive = FALSE), bind_rows)),
+         Airports = strsplit(Route, "[^A-Z]{1,2}") |> lapply(unique)) |>
+  # mutate(TruePath = map(TruePath, ~replace(., unlist(lapply(., is.null)), tibble()))) |> # empty tibbles, no NULL list entries
   arrange(desc(GCDist))
+
+## deal with NULL entries in TruePath (i.e. single leg flights - no listing done in summarise) ----
+tmp <- which(unlist(lapply(mytrips$TruePath, is.null)))
+while(length(tmp) > 0) {                                # ABER GLÜCKLICH BIN ICH MIT DIESER LÖSUNG NICHT!
+  mytrips$TruePath[[tmp[1]]] <- tibble()
+  tmp <- tmp[-1]
+}
+rm(tmp)
 comment(mytrips) <- person
 
+
+#|> 
+# mutate(TruePath = map(TruePath, ~replace(., unlist(lapply(., is.null)), tibble()))) # empty tibbles, no NULL list entries
+
+
+cat(paste0(spec, "'mytrips' (", person, ") done\n"))
+
 # CLEAN-UP ----
-rm(person, spot)
+rm(person, spot, spec, it, hl, fe, clean_flight)
